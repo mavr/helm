@@ -1,0 +1,174 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | indent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "selector.labels" . | indent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/cmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "common.labels" . | indent 8 }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    {{- include "selector.affinity" . | indent 20 }}
+                topologyKey: kubernetes.io/hostname
+      tolerations:
+        - key: stable
+          operator: Equal
+          value: reserve
+          effect: NoSchedule
+      initContainers:
+        # Clone Salt Master state tree folder Git repo
+        - name: git-cloner
+          image: alpine/git
+          env:
+            - name: GIT_URL
+              valueFrom:
+                secretKeyRef:
+                    name: {{ .Release.Name }}-creds-statetreegit
+                  key: url
+            - name: GIT_RSA
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-statetreegit
+                  key: key
+            - name: GIT_BRANCH
+              value: {{ .Values.stateTreeGit.branch }}
+          volumeMounts:
+            - name: vol-state-tree
+              mountPath: /srv
+          command: ["/bin/sh", "-c"]
+          args:
+            - mkdir /root/.ssh; chmod 700 /root/.ssh;
+              echo "$GIT_RSA" > /root/.ssh/id_rsa; chmod 600 /root/.ssh/id_rsa;
+              touch /root/.ssh/known_hosts; chmod 644 /root/.ssh/known_hosts;
+              ssh-keyscan gitlab.com >> /root/.ssh/known_hosts;
+              rm -rf /srv/salt;
+              git clone --depth 1 --single-branch --branch $GIT_BRANCH $GIT_URL /srv
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ template "chart.image" . }}
+          imagePullPolicy: {{ .Values.image.imagePullPolicy }}
+          env:
+            - name: ISM_CONFIG_PATH
+              value: /opt/ism/config/config.json
+            - name: ISM_ENV_SHORTNAME
+              value: {{ .Values.envShortName }}
+            - name: ISM_ENV_FULLNAME
+              value: {{ .Values.envFullName }}
+            - name: ISM_MQTT_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-vernemq
+                  key: ssl
+            - name: ISM_MQTT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-vernemq
+                  key: url
+            - name: ISM_MQTT_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-vernemq
+                  key: port
+            - name: ISM_MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-vernemq
+                  key: user
+            - name: ISM_MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-vernemq
+                  key: pswd
+            - name: ISM_META_MQTT_USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-meta-creds-vernemq
+                  key: useSsl
+            - name: ISM_META_MQTT_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-meta-creds-vernemq
+                  key: port
+            - name: ISM_META_MQTT_WSS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-meta-creds-vernemq
+                  key: wssPort
+            - name: ISM_META_MQTT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-meta-creds-vernemq
+                  key: user
+            - name: ISM_META_MQTT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-meta-creds-vernemq
+                  key: pswd
+            - name: ISM_SALT_HOSTNAME
+              value: {{ .Values.ingress.hostname }}
+            - name: ISM_SALT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-saltuser
+                  key: name
+            - name: ISM_SALT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-saltuser
+                  key: pswd
+            - name: ISM_SALT_EAUTH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-salteauth
+                  key: eauth
+            - name: ISM_GIT_RSA
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-creds-statetreegit
+                  key: key
+          ports:
+            - containerPort: 2112
+              name: monitoring
+          volumeMounts:
+            - name: vol-ism-conf
+              mountPath: /opt/ism/config
+            - name: vol-state-tree
+              mountPath: /srv
+          resources:
+            requests:
+              cpu: {{ .Values.resources.ism.requests.cpu }}
+              memory: {{ .Values.resources.ism.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.ism.limits.cpu }}
+              memory: {{ .Values.resources.ism.limits.memory }}
+      volumes:
+        - name: vol-ism-conf
+          configMap:
+            name: {{ .Release.Name }}-config
+        {{- range .Values.pv.rwo.names }}
+        - name: vol-master-pvc-{{ . }}
+          persistentVolumeClaim:
+            claimName: {{ $ }}-{{ . }}
+        {{- end }}
+        - name: vol-state-tree
+          emptyDir: {}
+        - name: vol-ipc
+          emptyDir: {}
+...

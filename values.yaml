@@ -1,0 +1,142 @@
+image:
+  repositoryPrefix: eu.gcr.io/simplinic-prod
+  imagePullPolicy: IfNotPresent
+  imageName: ism-gateway
+  tag: latest
+
+labelsAdditional: {}
+
+config:
+  network_config:
+    mqtt_broker:
+      use_ssl: false
+      url: ""
+      port: ""
+      qos: 1
+      user: ""
+      password: ""
+      connection_timeout_in_s: 5
+      connection_loss_timeout_in_s: 60
+    meta_info:
+      local_vmq_use_ssl: ""
+      local_vmq_port: ""
+      local_vmq_wss_port: ""
+      local_vmq_user: ""
+      local_vmq_password: ""
+    installation_id: ""
+    installation_name: ""
+    auth_send_interval_s: 120
+    auth_clearance_interval_s: 180
+
+  salt_config:
+    hostname: ""
+    url: "http://127.0.0.1"
+    installation_id: ""
+    port: 8080
+    user: "saltadmin"
+    password: "saltadmin"
+    eauth: "pam"
+    git_repo_path: "/srv"
+    export_ch_size: 1000
+    periodic_online_check_m: 10
+    timeout_http_request_s: 90
+    connection_change_notification_s: 30
+    deploy_cmd:
+      max_active_workers: 2
+      job_find_attempts: 3
+      find_job_s: 30
+      retry_s: 60
+      timeout_s: 300
+
+    move_cmd:
+      max_active_workers: 2
+      job_find_attempts: 3
+      find_job_s: 30
+      retry_s: 60
+      timeout_s: 180
+
+    test_cmd:
+      max_active_workers: 25
+      job_find_attempts: 1
+      find_job_s: 5
+      retry_s: 3
+      timeout_s: 60
+
+    sign_cmd:
+      retry_s: 15
+      timeout_s: 60
+
+  logger:
+    development: true
+    level: "error"
+    stacktrace_level: "error"
+    caller: true
+    slack: false
+    web_hook_url:
+
+envShortName: shortName
+envFullName: "Full name"
+envClusterName: "cluster-dev"
+
+stateTreeGit:
+  branch: "master"
+  url: "user@url:project.git"
+  base64Key: "base64 encode RSA key"
+
+vernemq:
+  ssl: "False"
+  url: "1.2.3.4"
+  port: "1883"
+  user: user
+  pswd: pswd
+
+pv:
+  persistenceEnabled: false
+  ## A manually managed Persistent Volume and Claim
+  ## If defined, PVC must be created manually before volume will be bound
+  ## The value is evaluated as a template
+  prefixFmt: gce-%s-%s-
+  legacyName: false
+  rwo:
+    names: # Do not edit if you use persistenceEnabled
+    - pki
+    - cache
+    size: 20Gi
+    storageClassName: "standard-stable"
+    type: "gce"
+
+ingress:
+  hostname: "localhost"
+  localVmq:
+    useSsl: "False"
+    port: "1883"
+    wssPort: "8080"
+    user: ""
+    pswd: ""
+
+monitoring:
+  enabled: True
+  prometheusNamespace: monitoring
+
+resources:
+  master:
+    requests:
+      cpu: 550m
+      memory: 2048Mi
+    limits:
+      cpu: 600m
+      memory: 4096Mi
+  api:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 150m
+      memory: 512Mi
+  ism:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi

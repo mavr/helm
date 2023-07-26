@@ -1,0 +1,22 @@
+{{/*{{- $persistenceEnabled := .Values.pv.persistenceEnabled -}}*/}}
+{{/*{{- $commonLabels := include "common.labels" . -}}*/}}
+{{/*{{- range .Values.pv.rwo.names }}*/}}
+{{/*apiVersion: v1*/}}
+{{/*kind: PersistentVolumeClaim*/}}
+{{/*metadata:*/}}
+{{/*  name: {{ .Release.Name }}*/}}
+{{/*  labels: {{- $commonLabels | nindent 4 }}*/}}
+{{/*spec:*/}}
+{{/*  storageClassName: "{{ $.Values.pv.rwo.storageClassName }}"*/}}
+{{/*  accessModes:*/}}
+{{/*    - ReadWriteOnce*/}}
+{{/*  resources:*/}}
+{{/*    requests:*/}}
+{{/*      storage: {{ $.Values.pv.rwo.size }}*/}}
+{{/*{{- if $persistenceEnabled }}*/}}
+{{/*  selector:*/}}
+{{/*    matchLabels:*/}}
+{{/*      id: {{ .Release.Name $ }}-{{ . }}*/}}
+{{/*{{- end }}*/}}
+{{/*---*/}}
+{{/*{{- end }}*/}}

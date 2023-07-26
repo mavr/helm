@@ -1,0 +1,23 @@
+{{ if and (eq $.Values.pv.rwo.type "gce") .Values.pv.persistenceEnabled }}
+{{- $commonLabels := include "common.labels.standard" . -}}
+{{- range .Values.pv.rwo.names }}
+## GCE
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ template "ism-gateway.resource.prefix" $ }}-{{ . }}
+  labels: {{- $commonLabels | nindent 4 }}
+    id: {{ template "ism-gateway.resource.prefix" $ }}-{{ . }}
+spec:
+  storageClassName: "{{ $.Values.pv.rwo.storageClassName }}"
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+    - ReadWriteOnce
+  capacity:
+    storage: {{ $.Values.pv.rwo.size }}
+  gcePersistentDisk:
+    pdName: {{ template "ism-gateway.pv.gce.prefix" $ }}{{ . }}
+    fsType: ext4
+  {{ end }}
+---
+{{- end }}
